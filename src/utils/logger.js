@@ -5,74 +5,50 @@ const colors = require('colors/safe');
 const logFilePath = path.join(__basedir, 'logs/full.log');
 const errorFilePath = path.join(__basedir, 'logs/error.log');
 
-fs.writeFileSync(logFilePath, '');
-fs.writeFileSync(errorFilePath, '');
-
-const logger = {
-  info: (message, extra = '') => {
-    const formattedMessage = `${colors.gray(getTimestamp())} ${colors.bgCyan('[INFO]')} : ${message} ${formatExtra(extra)}`;
-    const logMessage = `${getTimestamp()} [INFO] : ${message} ${formatExtra(extra)}`;
-    console.log(formattedMessage);
-    fs.appendFileSync(logFilePath, `${logMessage}\n`);
-  },
-  command: (message, extra = '') => {
-    const formattedMessage = `${colors.gray(getTimestamp())} ${colors.bgBrightMagenta('[COMMAND]')} : ${message} ${formatExtra(extra)}`;
-    const logMessage = `${getTimestamp()} [COMMAND] : ${message} ${formatExtra(extra)}`;
-    console.log(formattedMessage);
-    fs.appendFileSync(logFilePath, `${logMessage}\n`);
-  },
-  error: (message, extra = '') => {
-    const formattedMessage = `${colors.gray(getTimestamp())} ${colors.bgBrightRed('[ERROR]')} : ${message} ${formatExtra(extra)}`;
-    const logMessage = `${getTimestamp()} [ERROR] : ${message} ${formatExtra(extra)}`;
-    console.log(formattedMessage);
-    fs.appendFileSync(errorFilePath, `${logMessage}\n`);
-  },
-  loading: (message, extra = '') => {
-    const formattedMessage = `${colors.gray(getTimestamp())} ${colors.bgBlue('[LOADING]')} : ${message} ${formatExtra(extra)}`;
-    const logMessage = `${getTimestamp()} [LOADING] : ${message} ${formatExtra(extra)}`;
-    console.log(formattedMessage);
-    fs.appendFileSync(logFilePath, `${logMessage}\n`);
-  },
-  warn: (message, extra = '') => {
-    const formattedMessage = `${colors.gray(getTimestamp())} ${colors.bgBrightYellow('[WARN]')} : ${message} ${formatExtra(extra)}`;
-    const logMessage = `${getTimestamp()} [WARN] : ${message} ${formatExtra(extra)}`;
-    console.log(formattedMessage);
-    fs.appendFileSync(logFilePath, `${logMessage}\n`);
-  },
-  cron: (message, extra = '') => {
-    const formattedMessage = `${colors.gray(getTimestamp())} ${colors.bgBlue('[CRON]')} : ${message} ${formatExtra(extra)}`;
-    const logMessage = `${getTimestamp()} [CRON] : ${message} ${formatExtra(extra)}`;
-    console.log(formattedMessage);
-    fs.appendFileSync(logFilePath, `${logMessage}\n`);
-  },
-  ok: (message, extra = '') => {
-    const formattedMessage = `${colors.gray(getTimestamp())} ${colors.bgGreen('[LOADED]')} : ${message} ${formatExtra(extra)}`;
-    const logMessage = `${getTimestamp()} [LOADED] : ${message} ${formatExtra(extra)}`;
-    console.log(formattedMessage);
-    fs.appendFileSync(logFilePath, `${logMessage}\n`);
-  }
+const LEVELS = {
+  info: { color: colors.bgCyan, label: '[INFO]', file: logFilePath },
+  command: { color: colors.bgMagenta, label: '[COMMAND]', file: logFilePath },
+  error: { color: colors.bgRed, label: '[ERROR]', file: errorFilePath },
+  loading: { color: colors.bgBlue, label: '[LOADING]', file: logFilePath },
+  warn: { color: colors.bgYellow, label: '[WARN]', file: logFilePath },
+  cron: { color: colors.bgBlue, label: '[CRON]', file: logFilePath },
+  ok: { color: colors.bgGreen, label: '[LOADED]', file: logFilePath }
 };
 
 function getTimestamp() {
   const now = new Date();
-  const day = String(now.getDate()).padStart(2, '0');
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const year = now.getFullYear();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  return now.toLocaleString('fr-FR', { hour12: false });
 }
 
 function formatExtra(extra) {
   if (typeof extra === 'object') {
     try {
       return JSON.stringify(extra, null, 2);
-    } catch (error) {
-      return '[Object cannot be stringified]';
+    } catch {
+      return '[Objet non sérialisable]';
     }
   }
-  return extra;
+  return extra ? String(extra) : '';
+}
+
+function writeLog(file, message) {
+  try {
+    fs.appendFileSync(file, message + '\n');
+  } catch (err) {
+    console.error(colors.bgRed('[LOGGER ERROR]'), 'Impossible d\'écrire dans le fichier de log:', err);
+  }
+}
+
+const logger = {};
+
+for (const [level, { color, label, file }] of Object.entries(LEVELS)) {
+  logger[level] = (message, extra = '') => {
+    const timestamp = getTimestamp();
+    const formatted = `${colors.gray(timestamp)} ${color(label)} : ${message} ${formatExtra(extra)}`;
+    const logMsg = `${timestamp} ${label} : ${message} ${formatExtra(extra)}`;
+    console.log(formatted);
+    writeLog(file, logMsg);
+  };
 }
 
 module.exports = logger;
